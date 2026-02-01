@@ -1,0 +1,23 @@
+# Зависимости и артефакты — в контейнере ставим свои
+node_modules
+.next
+out
+build
+
+# Git и IDE
+.git
+.gitignore
+.cursor
+.vscode
+*.md
+
+# Логи и кэш
+npm-debug.log*
+.pnpm-debug.log*
+.env*
+.vercel
+
+# Docker — не копировать в образ
+Dockerfile*
+docker-compose*
+.dockerignore

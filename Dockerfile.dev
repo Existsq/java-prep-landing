@@ -1,0 +1,19 @@
+# Dev-образ: запуск Next.js в контейнере, код монтируется с хоста
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Копируем только зависимости для кэширования слоёв
+COPY package.json package-lock.json* pnpm-lock.yaml* ./
+
+RUN npm install
+
+# Остальное подмонтируется через docker-compose (volumes)
+COPY . .
+
+EXPOSE 3000
+
+# Слушать на всех интерфейсах, чтобы был доступ с хоста
+ENV HOSTNAME=0.0.0.0
+
+CMD ["npm", "run", "dev"]
