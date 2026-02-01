@@ -2,6 +2,7 @@
 
 import { Code2, Brain, Target, Zap, MessageSquare, BarChart3, ArrowRight, Send, Mic, RefreshCw, ChevronDown, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useRef, useState } from "react";
 
 const MOCK_CHAT_MESSAGES = [
@@ -53,6 +54,7 @@ export function FeaturesSection() {
   const [feedbackRingProgress, setFeedbackRingProgress] = useState(0);
   const [feedbackArrowVisible, setFeedbackArrowVisible] = useState(true);
   const [feedbackAnalyzingVisible, setFeedbackAnalyzingVisible] = useState(true);
+  const [feedbackResultsVisible, setFeedbackResultsVisible] = useState(false);
   const [feedbackReplayCount, setFeedbackReplayCount] = useState(0);
   const FEEDBACK_TARGET_SCORE = 85;
   const FEEDBACK_RING_CIRCUMFERENCE = 2 * Math.PI * 32;
@@ -110,19 +112,21 @@ export function FeaturesSection() {
     setFeedbackRingProgress(0);
     setFeedbackAnalyzingVisible(true);
     setFeedbackArrowVisible(true);
+    setFeedbackResultsVisible(false);
     // Даём один кадр отрисовать progress=0, затем запускаем анимацию заново
     requestAnimationFrame(() => {
       setFeedbackReplayCount((c) => c + 1);
     });
   };
 
-  // Analyzing hangs a bit, then Analyzing and arrow fade out together
+  // Когда прогрузка процентов завершена — через 300ms показываем результаты (текст + метрики)
   useEffect(() => {
     if (feedbackRingProgress < 1) return;
     const t = setTimeout(() => {
       setFeedbackAnalyzingVisible(false);
       setFeedbackArrowVisible(false);
-    }, 400);
+      setFeedbackResultsVisible(true);
+    }, 300);
     return () => clearTimeout(t);
   }, [feedbackRingProgress]);
 
@@ -661,25 +665,53 @@ export function FeaturesSection() {
                           </span>
                         </div>
                       </div>
-                      <div>
-                        <div className="text-lg font-medium text-foreground">Excellent Solution</div>
-                        <div className="text-sm text-muted-foreground">Optimal time complexity achieved</div>
+                      {/* Фиксированные размеры под текст: 1-я строка text-lg (h-7), 2-я text-sm (h-5), ширина w-80 */}
+                      <div className="w-80 h-14 flex flex-col justify-center shrink-0">
+                        {feedbackResultsVisible ? (
+                          <div className="animate-fade-in flex flex-col gap-2" style={{ animationDuration: "0.4s", animationFillMode: "both" }}>
+                            <div className="text-lg font-medium text-foreground h-7 leading-7">Excellent Solution</div>
+                            <div className="text-sm text-muted-foreground h-5 leading-5">Optimal time complexity achieved</div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-2">
+                            <Skeleton className="h-7 w-44 shrink-0 bg-muted/75 rounded-sm" />
+                            <Skeleton className="h-5 w-80 shrink-0 bg-muted/75 rounded-sm" />
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Metrics grid */}
+                    {/* Metrics grid — фиксированная высота значения text-lg (h-7), ширина под O(n) / O(1) / 12/12 */}
                     <div className="grid grid-cols-3 gap-3">
                       <div className="bg-secondary/50 p-3 text-center">
                         <div className="text-xs text-muted-foreground mb-1">TIME</div>
-                        <div className="text-lg font-mono font-bold text-foreground">O(n)</div>
+                        <div className="h-7 w-10 flex items-center justify-center mx-auto">
+                          {feedbackResultsVisible ? (
+                            <div className="text-lg font-mono font-bold text-foreground animate-fade-in" style={{ animationDuration: "0.4s", animationFillMode: "both" }}>O(n)</div>
+                          ) : (
+                            <Skeleton className="h-7 w-10 bg-muted/75 rounded-sm" />
+                          )}
+                        </div>
                       </div>
                       <div className="bg-secondary/50 p-3 text-center">
                         <div className="text-xs text-muted-foreground mb-1">SPACE</div>
-                        <div className="text-lg font-mono font-bold text-foreground">O(1)</div>
+                        <div className="h-7 w-10 flex items-center justify-center mx-auto">
+                          {feedbackResultsVisible ? (
+                            <div className="text-lg font-mono font-bold text-foreground animate-fade-in" style={{ animationDuration: "0.4s", animationFillMode: "both", animationDelay: "0.05s" }}>O(1)</div>
+                          ) : (
+                            <Skeleton className="h-7 w-10 bg-muted/75 rounded-sm" />
+                          )}
+                        </div>
                       </div>
                       <div className="bg-secondary/50 p-3 text-center">
                         <div className="text-xs text-muted-foreground mb-1">TESTS</div>
-                        <div className="text-lg font-mono font-bold text-foreground">12/12</div>
+                        <div className="h-7 w-12 flex items-center justify-center mx-auto">
+                          {feedbackResultsVisible ? (
+                            <div className="text-lg font-mono font-bold text-foreground animate-fade-in" style={{ animationDuration: "0.4s", animationFillMode: "both", animationDelay: "0.1s" }}>12/12</div>
+                          ) : (
+                            <Skeleton className="h-7 w-12 bg-muted/75 rounded-sm" />
+                          )}
+                        </div>
                       </div>
                     </div>
 
