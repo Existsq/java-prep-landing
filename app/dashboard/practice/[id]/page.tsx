@@ -5,11 +5,10 @@ export function generateStaticParams() {
   return PRACTICE_TASKS.map((task) => ({ id: task.id }));
 }
 
-export default async function PracticeTaskPage({
+export default function PracticeTaskPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  return <PracticeTaskClient id={id} />;
+  return <PracticeTaskClient params={params} />;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
@@ -47,7 +48,9 @@ export function Header() {
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
               Sign In
             </Button>
-            <Button size="sm">Get Started</Button>
+            <Button size="sm" asChild>
+              <Link href="/dashboard">Get Started</Link>
+            </Button>
           </div>
 
           {/* Mobile menu button */}
@@ -86,7 +89,9 @@ export function Header() {
               <Button variant="ghost" size="sm" className="justify-start text-muted-foreground">
                 Sign In
               </Button>
-              <Button size="sm">Get Started</Button>
+              <Button size="sm" asChild>
+                <Link href="/dashboard">Get Started</Link>
+              </Button>
             </div>
           </div>
         </div>

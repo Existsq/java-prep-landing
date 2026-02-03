@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { THEORY_TOPICS } from "@/lib/mock-dashboard";
 
@@ -9,10 +10,11 @@ export function DashboardTheorySection() {
   const activeData = THEORY_TOPICS.find((t) => t.id === activeTopic);
 
   return (
-    <section className="py-12 lg:py-16 border-t border-border">
+    <section className="py-8 lg:py-10 border-t border-border">
       <div>
-        <div className="mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 border border-border bg-card text-xs font-mono text-muted-foreground mb-3">
+        <div className="mb-6">
+          <div className="inline-flex w-fit items-center gap-2 px-3 py-1.5 border border-border bg-card text-xs font-mono text-muted-foreground mb-3">
+            <BookOpen className="h-3.5 w-3.5" />
             THEORY
           </div>
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-1">

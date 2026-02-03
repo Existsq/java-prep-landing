@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { use, useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   ResizablePanelGroup,
@@ -9,16 +10,29 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Play, Send, Zap } from "lucide-react";
+import { PracticeTaskListSidebar } from "@/components/practice-task-list-sidebar";
+import { List, Play, Send, Zap } from "lucide-react";
 import { getPracticeTaskDetail } from "@/lib/mock-practice";
 
 type RunStatus = "idle" | "running" | "done";
 
-export function PracticeTaskClient({ id }: { id: string }) {
-  const task = useMemo(() => getPracticeTaskDetail(id), [id]);
+export function PracticeTaskClient({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+  const searchParams = useSearchParams();
+  const initialOpenList = searchParams.get("list") === "1";
 
+  const task = useMemo(() => getPracticeTaskDetail(id), [id]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [code, setCode] = useState(task?.starterCode ?? "");
   const [runStatus, setRunStatus] = useState<RunStatus>("idle");
+
+  useEffect(() => {
+    if (initialOpenList) setSidebarOpen(true);
+  }, [initialOpenList]);
 
   if (!task) {
     return (
@@ -40,22 +54,31 @@ export function PracticeTaskClient({ id }: { id: string }) {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
-      {/* Top bar: back + title */}
+    <div className="fixed inset-x-0 top-16 bottom-0 z-40 flex flex-col overflow-hidden bg-background">
+      {/* Top bar: title + open list */}
       <div className="border-b border-border bg-card px-4 py-3 flex items-center gap-4 shrink-0">
-        <Button variant="ghost" size="sm" className="gap-2" asChild>
-          <Link href="/dashboard#practice">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Practice
-          </Link>
-        </Button>
         <div className="flex-1 min-w-0">
           <h1 className="font-semibold text-foreground truncate">{task.title}</h1>
           <p className="text-xs text-muted-foreground">
             {task.topic} · {task.difficulty} · {task.company}
           </p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2 shrink-0"
+          onClick={() => setSidebarOpen(true)}
+        >
+          <List className="h-4 w-4" />
+          All tasks
+        </Button>
       </div>
+
+      <PracticeTaskListSidebar
+        open={sidebarOpen}
+        onOpenChange={setSidebarOpen}
+        currentTaskId={id}
+      />
 
       <ResizablePanelGroup
         direction="horizontal"

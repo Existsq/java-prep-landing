@@ -1,172 +1,277 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Brain, Send, ArrowLeft } from "lucide-react";
+import { Brain, ArrowLeft, ArrowRight, Check } from "lucide-react";
+import {
+  MOCK_INTERVIEW_SETUP_STEPS,
+  type SetupAnswers,
+  type SetupQuestion,
+  type SetupAnswer,
+} from "@/lib/mock-interview-setup";
+import { cn } from "@/lib/utils";
 
-type MessageRole = "ai" | "user";
+/** Returns step index that contains the given question id */
+function getStepIndexForQuestion(questionId: string): number {
+  const idx = MOCK_INTERVIEW_SETUP_STEPS.findIndex((step) =>
+    step.questions.some((q) => q.id === questionId)
+  );
+  return idx >= 0 ? idx : 0;
+}
 
-type Message = {
-  id: string;
-  role: MessageRole;
-  text: string;
-};
+/** Get label for selected answer id from a question */
+function getAnswerLabel(question: SetupQuestion, answerId: string): string {
+  const opt = question.options.find((o) => o.id === answerId);
+  return opt?.label ?? answerId;
+}
 
-const MOCK_AI_REPLIES = [
-  "That's a great starting point. Can you walk me through the main challenges you faced in that project?",
-  "Thanks for sharing. How would you approach optimizing the performance of that system?",
-  "Good answer. Let's switch to a technical question: how do you handle concurrency in Java?",
-  "I see. What design patterns do you find most useful in your day-to-day work?",
-  "We have time for one more. Tell me about a time you had to debug a difficult production issue.",
-];
+/** Build list of { question, answer label, stepIndex } for Ready step */
+function getSummaryItems(answers: SetupAnswers): { questionLabel: string; answerLabel: string; questionId: string; stepIndex: number }[] {
+  const items: { questionLabel: string; answerLabel: string; questionId: string; stepIndex: number }[] = [];
+  for (const step of MOCK_INTERVIEW_SETUP_STEPS) {
+    if (step.questions.length === 0) continue;
+    for (const q of step.questions) {
+      const answerId = answers[q.id];
+      if (!answerId) continue;
+      const stepIndex = getStepIndexForQuestion(q.id);
+      items.push({
+        questionLabel: q.question,
+        answerLabel: getAnswerLabel(q, answerId),
+        questionId: q.id,
+        stepIndex,
+      });
+    }
+  }
+  return items;
+}
 
-const INITIAL_AI_MESSAGE: Message = {
-  id: "0",
-  role: "ai",
-  text: "Hello! I'm your AI interviewer. Let's start with a short intro — tell me about a recent project you worked on and your role in it.",
-};
+export default function MockInterviewSetupPage() {
+  const router = useRouter();
+  const [stepIndex, setStepIndex] = useState(0);
+  const [answers, setAnswers] = useState<SetupAnswers>({});
 
-export default function MockInterviewPage() {
-  const [messages, setMessages] = useState<Message[]>([INITIAL_AI_MESSAGE]);
-  const [input, setInput] = useState("");
-  const [isAiTyping, setIsAiTyping] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const replyIndexRef = useRef(0);
+  const step = MOCK_INTERVIEW_SETUP_STEPS[stepIndex];
+  const isLastStep = stepIndex === MOCK_INTERVIEW_SETUP_STEPS.length - 1;
+  const isReadyStep = step.questions.length === 0;
 
-  useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isAiTyping]);
+  const currentStepAnswersComplete = step.questions.every((q) => answers[q.id]);
+  const canProceed = isReadyStep || currentStepAnswersComplete;
 
-  const handleSend = () => {
-    const trimmed = input.trim();
-    if (!trimmed || isAiTyping) return;
-
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      text: trimmed,
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsAiTyping(true);
-
-    const reply =
-      MOCK_AI_REPLIES[replyIndexRef.current % MOCK_AI_REPLIES.length];
-    replyIndexRef.current += 1;
-
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: `ai-${Date.now()}`,
-        role: "ai",
-        text: reply,
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-      setIsAiTyping(false);
-    }, 800);
+  const handleSelect = (questionId: string, answerId: string) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: answerId }));
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  const handleNext = () => {
+    if (isReadyStep) {
+      router.push("/dashboard/mock-interview/session");
+      return;
+    }
+    if (stepIndex < MOCK_INTERVIEW_SETUP_STEPS.length - 1) {
+      setStepIndex((i) => i + 1);
     }
   };
 
+  const handleBack = () => {
+    if (stepIndex > 0) setStepIndex((i) => i - 1);
+  };
+
+  const handleEditSetting = (targetStepIndex: number) => {
+    setStepIndex(targetStepIndex);
+  };
+
+  const summaryItems = getSummaryItems(answers);
+
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col bg-background">
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
       <header className="shrink-0 border-b border-border bg-card">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" className="gap-2" asChild>
-              <Link href="/dashboard">
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Link>
-            </Button>
-            <div className="flex items-center gap-2">
-              <Brain className="h-4 w-4 text-foreground" />
-              <span className="text-sm font-medium text-foreground">
-                AI Interviewer
-              </span>
-            </div>
-          </div>
-          <Button variant="outline" size="sm" className="text-muted-foreground" asChild>
-            <Link href="/dashboard">End interview</Link>
+        <div className="flex items-center justify-between px-4 py-3 max-w-3xl mx-auto">
+          <Button variant="ghost" size="sm" className="gap-2" asChild>
+            <Link href="/dashboard">
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Link>
           </Button>
+          <div className="flex items-center gap-2">
+            <Brain className="h-4 w-4 text-foreground" />
+            <span className="text-sm font-medium text-foreground">
+              Set up mock interview
+            </span>
+          </div>
+          <div className="w-20" aria-hidden />
         </div>
       </header>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 p-6">
-        <div className="max-w-2xl mx-auto space-y-4">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex gap-3 animate-fade-in ${
-                msg.role === "user" ? "flex-row-reverse" : ""
-              }`}
-            >
-              {msg.role === "ai" ? (
-                <div className="w-8 h-8 bg-secondary flex items-center justify-center shrink-0 rounded">
-                  <Brain className="h-4 w-4 text-muted-foreground" />
-                </div>
-              ) : (
-                <div className="w-8 h-8 bg-foreground flex items-center justify-center shrink-0 rounded">
-                  <span className="text-xs font-bold text-background">You</span>
-                </div>
-              )}
+      {/* Progress */}
+      <div className="border-b border-border bg-card/50 px-4 py-3">
+        <div className="max-w-3xl mx-auto flex items-center gap-2">
+          {MOCK_INTERVIEW_SETUP_STEPS.map((s, i) => (
+            <div key={s.id} className="flex items-center gap-2">
               <div
-                className={`p-3 text-sm text-foreground max-w-[85%] ${
-                  msg.role === "user"
-                    ? "bg-secondary/50 border border-border"
-                    : "bg-secondary"
-                }`}
+                className={cn(
+                  "w-8 h-8 border flex items-center justify-center text-sm font-mono",
+                  i < stepIndex
+                    ? "bg-foreground text-background border-foreground"
+                    : i === stepIndex
+                      ? "bg-foreground text-background border-foreground"
+                      : "bg-transparent text-muted-foreground border-border"
+                )}
               >
-                {msg.text}
+                {i < stepIndex ? <Check className="h-4 w-4" /> : i + 1}
               </div>
+              {i < MOCK_INTERVIEW_SETUP_STEPS.length - 1 && (
+                <div className="w-6 h-px bg-border" />
+              )}
             </div>
           ))}
-          {isAiTyping && (
-            <div className="flex gap-3 animate-fade-in">
-              <div className="w-8 h-8 bg-secondary flex items-center justify-center shrink-0 rounded">
-                <Brain className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </div>
+
+      {/* Content */}
+      <main className="flex-1 py-8 px-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 border border-border bg-card text-xs font-mono text-muted-foreground mb-3">
+              STEP {stepIndex + 1} OF {MOCK_INTERVIEW_SETUP_STEPS.length}
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-1">
+              {step.title}
+            </h1>
+            {step.description && (
+              <p className="text-muted-foreground">{step.description}</p>
+            )}
+          </div>
+
+          {isReadyStep ? (
+            <div className="space-y-6">
+              <p className="text-sm text-muted-foreground">
+                Review your choices. Click a setting to change it.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {summaryItems.map((item) => (
+                  <button
+                    key={item.questionId}
+                    type="button"
+                    onClick={() => handleEditSetting(item.stepIndex)}
+                    className="bg-card border border-border rounded-lg p-4 text-left hover:border-foreground/30 hover:bg-secondary/30 transition-colors group"
+                  >
+                    <div className="text-xs font-mono text-muted-foreground mb-1 line-clamp-1 group-hover:text-foreground/80">
+                      {item.questionLabel}
+                    </div>
+                    <div className="text-sm font-medium text-foreground">
+                      {item.answerLabel}
+                    </div>
+                  </button>
+                ))}
               </div>
-              <div className="p-3 text-sm text-muted-foreground bg-secondary">
-                <span className="inline-block w-2 h-4 bg-foreground animate-pulse" />
+              <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-border">
+                <Button
+                  variant="outline"
+                  onClick={handleBack}
+                  className="gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </Button>
+                <Button
+                  size="lg"
+                  className="gap-2"
+                  onClick={handleNext}
+                >
+                  Start interview
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {step.questions.map((q) => (
+                <QuestionBlock
+                  key={q.id}
+                  question={q}
+                  selectedId={answers[q.id]}
+                  onSelect={(id) => handleSelect(q.id, id)}
+                />
+              ))}
+
+              <div className="flex items-center justify-between pt-4 border-t border-border">
+                <Button
+                  variant="outline"
+                  onClick={handleBack}
+                  disabled={stepIndex === 0}
+                  className="gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </Button>
+                <Button
+                  onClick={handleNext}
+                  disabled={!canProceed}
+                  className="gap-2"
+                >
+                  Next
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           )}
-          <div ref={scrollRef} />
         </div>
-      </ScrollArea>
+      </main>
+    </div>
+  );
+}
 
-      {/* Input */}
-      <div className="shrink-0 border-t border-border bg-card p-4">
-        <div className="max-w-2xl mx-auto flex items-center gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your answer..."
-            className="flex-1 h-10 px-3 rounded-md border border-border bg-secondary/50 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
+function QuestionBlock({
+  question,
+  selectedId,
+  onSelect,
+}: {
+  question: SetupQuestion;
+  selectedId?: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="bg-card border border-border rounded-lg p-5">
+      <h2 className="text-base font-medium text-foreground mb-4">
+        {question.question}
+      </h2>
+      <div className="flex flex-wrap gap-3">
+        {question.options.map((opt) => (
+          <OptionButton
+            key={opt.id}
+            option={opt}
+            selected={selectedId === opt.id}
+            onSelect={() => onSelect(opt.id)}
           />
-          <Button
-            size="icon"
-            variant="outline"
-            className="h-10 w-10 shrink-0"
-            onClick={handleSend}
-            type="button"
-            disabled={!input.trim() || isAiTyping}
-            aria-label="Send message"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
+        ))}
       </div>
     </div>
+  );
+}
+
+function OptionButton({
+  option,
+  selected,
+  onSelect,
+}: {
+  option: SetupAnswer;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "px-4 py-3 text-sm font-medium border rounded-lg transition-colors text-left",
+        selected
+          ? "bg-foreground text-background border-foreground"
+          : "bg-transparent text-foreground border-border hover:border-foreground/50 hover:bg-secondary/50"
+      )}
+    >
+      {option.label}
+    </button>
   );
 }
